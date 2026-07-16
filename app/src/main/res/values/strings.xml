@@ -63,6 +63,17 @@
     <string name="empty_recent_devices">Connected TVs will appear here.</string>
     <string name="empty_recent_media">Played and cast media will appear here.</string>
     <string name="search">Search</string>
+    <string name="library_search_hint">Search videos, photos, music</string>
+    <string name="library_videos_body">Browse local videos with duration, size and quick playback actions.</string>
+    <string name="library_photos_body">Review recent photos and albums before sharing them to the big screen.</string>
+    <string name="library_music_body">Find songs, albums and artists with clean playback controls.</string>
+    <string name="library_favorites_body">Your saved media shortcuts stay here for fast replay.</string>
+    <string name="media_items_found">%1$d items</string>
+    <string name="sort_recent_first">Recent first</string>
+    <string name="no_search_results">No matching media found.</string>
+    <string name="untitled_media">Untitled media</string>
+    <string name="play">Play</string>
+    <string name="cast">Cast</string>
     <string name="sort">Sort</string>
     <string name="grid">Grid</string>
     <string name="list">List</string>

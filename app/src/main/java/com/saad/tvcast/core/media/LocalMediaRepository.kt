@@ -2,7 +2,9 @@ package com.saad.tvcast.core.media
 
 import android.content.ContentUris
 import android.content.Context
+import android.database.Cursor
 import android.provider.MediaStore
+import com.saad.tvcast.R
 import com.saad.tvcast.core.common.LocalMediaItem
 import com.saad.tvcast.core.common.MediaKind
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -64,36 +66,50 @@ class LocalMediaRepository @Inject constructor(
             MediaKind.WebVideo -> null
         }
 
-        resolver.query(collection, projection, null, null, sort)?.use { cursor ->
+        val selection = when (kind) {
+            MediaKind.Music -> "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+            else -> null
+        }
+
+        resolver.query(collection, projection, selection, null, sort)?.use { cursor ->
             buildList {
-                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                val mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
-                val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                val idColumn = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
+                val nameColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                if (idColumn < 0 || nameColumn < 0) return@buildList
+
+                val mimeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
+                val sizeColumn = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                val dateColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_ADDED)
                 val durationColumn = cursor.getColumnIndex(COLUMN_DURATION)
                 val albumColumn = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
                 val artistColumn = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)
                 val folderColumn = cursor.getColumnIndex(COLUMN_BUCKET_DISPLAY_NAME)
                 while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idColumn)
+                    val id = cursor.getLongOrNull(idColumn) ?: continue
                     add(
                         LocalMediaItem(
                             id = id.toString(),
                             uri = ContentUris.withAppendedId(collection, id),
-                            displayName = cursor.getString(nameColumn).orEmpty(),
+                            displayName = cursor.getStringOrNull(nameColumn).orEmpty()
+                                .ifBlank { context.getString(R.string.untitled_media) },
                             kind = kind,
-                            mimeType = cursor.getString(mimeColumn),
-                            sizeBytes = cursor.getLong(sizeColumn),
-                            durationMillis = durationColumn.takeIf { it >= 0 }?.let { cursor.getLong(it) },
-                            dateAddedMillis = cursor.getLong(dateColumn) * 1000,
-                            album = albumColumn.takeIf { it >= 0 }?.let { cursor.getString(it) },
-                            artist = artistColumn.takeIf { it >= 0 }?.let { cursor.getString(it) },
-                            folder = folderColumn.takeIf { it >= 0 }?.let { cursor.getString(it) }
+                            mimeType = cursor.getStringOrNull(mimeColumn),
+                            sizeBytes = cursor.getLongOrNull(sizeColumn) ?: 0L,
+                            durationMillis = cursor.getLongOrNull(durationColumn),
+                            dateAddedMillis = (cursor.getLongOrNull(dateColumn) ?: 0L) * 1000,
+                            album = cursor.getStringOrNull(albumColumn),
+                            artist = cursor.getStringOrNull(artistColumn),
+                            folder = cursor.getStringOrNull(folderColumn)
                         )
                     )
                 }
             }
         } ?: emptyList()
     }
+
+    private fun Cursor.getStringOrNull(index: Int): String? =
+        if (index >= 0 && !isNull(index)) getString(index) else null
+
+    private fun Cursor.getLongOrNull(index: Int): Long? =
+        if (index >= 0 && !isNull(index)) getLong(index) else null
 }

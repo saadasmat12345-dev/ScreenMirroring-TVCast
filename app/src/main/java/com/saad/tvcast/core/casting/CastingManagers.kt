@@ -91,7 +91,7 @@ class DlnaDeviceDiscoveryManager @Inject constructor() : DeviceDiscoveryManager 
                     val id = headers["usn"] ?: location
                     found[id] = CastDevice(
                         id = id,
-                        name = descriptor?.friendlyName ?: responsePacket.address.hostName ?: "DLNA renderer",
+                        name = descriptor?.friendlyName ?: responsePacket.address.hostAddress ?: "DLNA renderer",
                         type = descriptor?.deviceType ?: DeviceType.Tv,
                         protocol = DeviceProtocol.Dlna,
                         ipAddress = responsePacket.address.hostAddress,
@@ -115,39 +115,47 @@ class DlnaDeviceDiscoveryManager @Inject constructor() : DeviceDiscoveryManager 
 
     private fun fetchDescriptor(location: String): DeviceDescriptor {
         val parser = Xml.newPullParser()
-        URL(location).openStream().use { stream ->
-            parser.setInput(stream, null)
-            var friendlyName: String? = null
-            var deviceType: DeviceType = DeviceType.Unknown
-            var serviceType: String? = null
-            var controlUrl: String? = null
-            var inService = false
-            var selectedControlUrl: String? = null
-            while (parser.next() != XmlPullParser.END_DOCUMENT) {
-                if (parser.eventType == XmlPullParser.START_TAG) {
-                    when (parser.name) {
-                        "friendlyName" -> friendlyName = parser.nextText()
-                        "deviceType" -> deviceType = parser.nextText().toDeviceType()
-                        "service" -> {
-                            inService = true
-                            serviceType = null
-                            controlUrl = null
+        val connection = (URL(location).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 3_000
+            readTimeout = 3_000
+        }
+        try {
+            connection.inputStream.use { stream ->
+                parser.setInput(stream, null)
+                var friendlyName: String? = null
+                var deviceType: DeviceType = DeviceType.Unknown
+                var serviceType: String? = null
+                var controlUrl: String? = null
+                var inService = false
+                var selectedControlUrl: String? = null
+                while (parser.next() != XmlPullParser.END_DOCUMENT) {
+                    if (parser.eventType == XmlPullParser.START_TAG) {
+                        when (parser.name) {
+                            "friendlyName" -> friendlyName = parser.nextText()
+                            "deviceType" -> deviceType = parser.nextText().toDeviceType()
+                            "service" -> {
+                                inService = true
+                                serviceType = null
+                                controlUrl = null
+                            }
+                            "serviceType" -> if (inService) serviceType = parser.nextText()
+                            "controlURL" -> if (inService) controlUrl = parser.nextText()
                         }
-                        "serviceType" -> if (inService) serviceType = parser.nextText()
-                        "controlURL" -> if (inService) controlUrl = parser.nextText()
+                    } else if (parser.eventType == XmlPullParser.END_TAG && parser.name == "service") {
+                        if (serviceType?.contains("AVTransport", ignoreCase = true) == true && controlUrl != null) {
+                            selectedControlUrl = resolveUrl(location, controlUrl.orEmpty())
+                        }
+                        inService = false
                     }
-                } else if (parser.eventType == XmlPullParser.END_TAG && parser.name == "service") {
-                    if (serviceType?.contains("AVTransport", ignoreCase = true) == true && controlUrl != null) {
-                        selectedControlUrl = resolveUrl(location, controlUrl.orEmpty())
-                    }
-                    inService = false
                 }
+                return DeviceDescriptor(
+                    friendlyName = friendlyName,
+                    deviceType = deviceType,
+                    avTransportControlUrl = selectedControlUrl
+                )
             }
-            return DeviceDescriptor(
-                friendlyName = friendlyName,
-                deviceType = deviceType,
-                avTransportControlUrl = selectedControlUrl
-            )
+        } finally {
+            connection.disconnect()
         }
     }
 

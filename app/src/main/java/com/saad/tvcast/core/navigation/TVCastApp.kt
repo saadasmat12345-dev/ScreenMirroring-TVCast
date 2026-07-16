@@ -106,7 +106,12 @@ fun TVCastApp() {
                 BrowserScreen(viewModel = hiltViewModel())
             }
             composable(Destination.Library.route) {
-                LibraryScreen(viewModel = hiltViewModel())
+                LibraryScreen(
+                    viewModel = hiltViewModel(),
+                    onPlayMedia = { uri, title ->
+                        navController.navigate(Destination.Player.route(uri, title))
+                    }
+                )
             }
             composable(Destination.Activity.route) {
                 ActivityScreen(viewModel = hiltViewModel())

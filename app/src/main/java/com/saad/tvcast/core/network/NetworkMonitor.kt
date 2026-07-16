@@ -23,11 +23,20 @@ class AndroidNetworkMonitor @Inject constructor(
 ) : NetworkMonitor {
     override val isOnline: Flow<Boolean> = callbackFlow {
         val manager = context.getSystemService(ConnectivityManager::class.java)
+        if (manager == null) {
+            trySend(false)
+            close()
+            awaitClose { }
+            return@callbackFlow
+        }
+
         fun currentOnline(): Boolean {
-            val network = manager.activeNetwork ?: return false
-            val capabilities = manager.getNetworkCapabilities(network) ?: return false
-            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            return runCatching {
+                val network = manager.activeNetwork
+                val capabilities = network?.let { manager.getNetworkCapabilities(it) }
+                capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            }.getOrDefault(false)
         }
 
         val callback = object : ConnectivityManager.NetworkCallback() {
@@ -44,10 +53,16 @@ class AndroidNetworkMonitor @Inject constructor(
             }
         }
         trySend(currentOnline())
-        manager.registerNetworkCallback(
-            NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
-            callback
-        )
-        awaitClose { manager.unregisterNetworkCallback(callback) }
+        val registered = runCatching {
+            manager.registerNetworkCallback(
+                NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
+                callback
+            )
+        }.isSuccess
+        awaitClose {
+            if (registered) {
+                runCatching { manager.unregisterNetworkCallback(callback) }
+            }
+        }
     }.distinctUntilChanged()
 }

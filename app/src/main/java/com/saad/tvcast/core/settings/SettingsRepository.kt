@@ -3,6 +3,7 @@ package com.saad.tvcast.core.settings
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.saad.tvcast.BuildConfig
@@ -11,7 +12,9 @@ import com.saad.tvcast.core.common.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 private val Context.settingsDataStore by preferencesDataStore(name = "tvcast_settings")
@@ -40,17 +43,25 @@ class SettingsRepository @Inject constructor(
         val notificationsEnabled = booleanPreferencesKey("notifications_enabled")
     }
 
-    val settings: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
-        AppSettings(
-            onboardingComplete = prefs[Keys.onboardingComplete] ?: false,
-            themeMode = prefs[Keys.themeMode].toEnum(ThemeMode.System),
-            castQuality = prefs[Keys.castQuality].toEnum(CastQuality.Auto),
-            autoReconnect = prefs[Keys.autoReconnect] ?: false,
-            keepScreenAwake = prefs[Keys.keepScreenAwake] ?: true,
-            browserHomepage = prefs[Keys.browserHomepage] ?: BuildConfig.BROWSER_DEFAULT_HOME,
-            notificationsEnabled = prefs[Keys.notificationsEnabled] ?: false
-        )
-    }
+    val settings: Flow<AppSettings> = context.settingsDataStore.data
+        .catch { throwable ->
+            if (throwable is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw throwable
+            }
+        }
+        .map { prefs ->
+            AppSettings(
+                onboardingComplete = prefs[Keys.onboardingComplete] ?: false,
+                themeMode = prefs[Keys.themeMode].toEnum(ThemeMode.System),
+                castQuality = prefs[Keys.castQuality].toEnum(CastQuality.Auto),
+                autoReconnect = prefs[Keys.autoReconnect] ?: false,
+                keepScreenAwake = prefs[Keys.keepScreenAwake] ?: true,
+                browserHomepage = prefs[Keys.browserHomepage] ?: BuildConfig.BROWSER_DEFAULT_HOME,
+                notificationsEnabled = prefs[Keys.notificationsEnabled] ?: false
+            )
+        }
 
     suspend fun completeOnboarding() {
         context.settingsDataStore.edit { it[Keys.onboardingComplete] = true }

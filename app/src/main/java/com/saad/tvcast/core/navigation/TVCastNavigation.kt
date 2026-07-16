@@ -1,5 +1,6 @@
 package com.saad.tvcast.core.navigation
 
+import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bookmarks
@@ -22,7 +23,8 @@ sealed class Destination(val route: String) {
     data object Mirroring : Destination("mirroring")
     data object Premium : Destination("premium")
     data object Player : Destination("player?uri={uri}&title={title}") {
-        fun route(uri: String, title: String): String = "player?uri=$uri&title=$title"
+        fun route(uri: String, title: String): String =
+            "player?uri=${Uri.encode(uri)}&title=${Uri.encode(title)}"
     }
 }
 

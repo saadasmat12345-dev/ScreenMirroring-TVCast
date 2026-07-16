@@ -175,7 +175,7 @@ fun BrowserScreen(viewModel: BrowserViewModel = hiltViewModel()) {
             Switch(checked = state.desktopMode, onCheckedChange = viewModel::setDesktopMode)
             TextButton(onClick = { viewModel.clearData(webView) }) { Text(stringResource(R.string.clear_browser_data)) }
         }
-        state.message?.let { StatusCard(stringResource(R.string.browser), stringResource(R.string.blocked_url)) }
+        state.message?.let { StatusCard(stringResource(R.string.browser), it) }
         AndroidView(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             factory = {
@@ -199,7 +199,11 @@ fun BrowserScreen(viewModel: BrowserViewModel = hiltViewModel()) {
                         }
 
                         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                            viewModel.detect(request.url.toString(), request.requestHeaders["Accept"], view.title)
+                            val url = request.url.toString()
+                            val acceptHeader = request.requestHeaders["Accept"]
+                            view.post {
+                                viewModel.detect(url, acceptHeader, view.title)
+                            }
                             return null
                         }
 
@@ -212,7 +216,12 @@ fun BrowserScreen(viewModel: BrowserViewModel = hiltViewModel()) {
                             view.evaluateJavascript(
                                 "Array.from(document.querySelectorAll('video,source')).map(e=>e.currentSrc||e.src).filter(Boolean).join('\\n')"
                             ) { result ->
-                                result.trim('"').replace("\\n", "\n").lineSequence()
+                                if (result.isNullOrBlank() || result == "null") return@evaluateJavascript
+                                result.trim('"')
+                                    .replace("\\u0026", "&")
+                                    .replace("\\/", "/")
+                                    .replace("\\n", "\n")
+                                    .lineSequence()
                                     .filter { it.isNotBlank() }
                                     .forEach { viewModel.detect(it, null, view.title) }
                             }
