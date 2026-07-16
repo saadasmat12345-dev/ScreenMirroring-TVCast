@@ -1,12 +1,18 @@
 package com.saad.tvcast.feature.home
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Cast
 import androidx.compose.material.icons.outlined.Image
@@ -14,11 +20,16 @@ import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.ScreenShare
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.Web
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,10 +47,13 @@ import com.saad.tvcast.core.database.DeviceDao
 import com.saad.tvcast.core.database.CastingHistoryDao
 import com.saad.tvcast.core.database.DeviceEntity
 import com.saad.tvcast.core.designsystem.component.BannerAd
+import com.saad.tvcast.core.designsystem.component.BrandMark
 import com.saad.tvcast.core.designsystem.component.ConnectionCard
 import com.saad.tvcast.core.designsystem.component.DeviceRow
 import com.saad.tvcast.core.designsystem.component.EmptyPanel
 import com.saad.tvcast.core.designsystem.component.FeatureActionCard
+import com.saad.tvcast.core.designsystem.component.MetricPill
+import com.saad.tvcast.core.designsystem.component.ScreenBackground
 import com.saad.tvcast.core.designsystem.component.SectionHeader
 import com.saad.tvcast.core.designsystem.component.StatusCard
 import com.saad.tvcast.core.billing.BillingManager
@@ -98,60 +112,177 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LazyColumn(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ScreenBackground {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 18.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            item { HomeHero() }
+            item {
+                ConnectionCard(
+                    connection = state.connection,
+                    onScan = onScanDevices,
+                    onDisconnect = viewModel::disconnect,
+                    onReconnect = onScanDevices
+                )
+            }
+            item { HomeMetricStrip() }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        FeatureActionCard(
+                            stringResource(R.string.screen_mirroring),
+                            stringResource(R.string.screen_mirroring_subtitle),
+                            Icons.Outlined.ScreenShare,
+                            onMirror,
+                            Modifier.weight(1f),
+                            MaterialTheme.colorScheme.primary
+                        )
+                        FeatureActionCard(
+                            stringResource(R.string.cast_video),
+                            stringResource(R.string.cast_video_subtitle),
+                            Icons.Outlined.VideoLibrary,
+                            onOpenLibrary,
+                            Modifier.weight(1f),
+                            MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        FeatureActionCard(
+                            stringResource(R.string.cast_photo),
+                            stringResource(R.string.cast_photo_subtitle),
+                            Icons.Outlined.Image,
+                            onOpenLibrary,
+                            Modifier.weight(1f),
+                            MaterialTheme.colorScheme.tertiary
+                        )
+                        FeatureActionCard(
+                            stringResource(R.string.cast_music),
+                            stringResource(R.string.cast_music_subtitle),
+                            Icons.Outlined.MusicNote,
+                            onOpenLibrary,
+                            Modifier.weight(1f),
+                            MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    FeatureActionCard(
+                        stringResource(R.string.web_video_cast),
+                        stringResource(R.string.web_video_cast_subtitle),
+                        Icons.Outlined.Web,
+                        onOpenBrowser,
+                        accentColor = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            item { BannerAd(visible = state.showAds) }
+            item { SectionHeader(stringResource(R.string.recent_devices)) }
+            if (state.recentDevices.isEmpty()) {
+                item { EmptyPanel(stringResource(R.string.empty_recent_devices)) }
+            } else {
+                items(state.recentDevices, key = { it.id }) { device ->
+                    DeviceRow(device.name, listOfNotNull(device.protocol, device.ipAddress).joinToString(" | "), onClick = onScanDevices)
+                }
+            }
+            item { SectionHeader(stringResource(R.string.recently_played)) }
+            if (state.recentHistory.isEmpty()) {
+                item { EmptyPanel(stringResource(R.string.empty_recent_media)) }
+            } else {
+                items(state.recentHistory, key = { it.id }) { item ->
+                    DeviceRow(item.mediaTitle, listOfNotNull(item.mediaKind, item.deviceName, item.status).joinToString(" | "), onClick = onOpenLibrary)
+                }
+            }
+            item {
+                StatusCard(
+                    title = stringResource(R.string.connection_help),
+                    body = stringResource(R.string.device_troubleshooting),
+                    icon = Icons.Outlined.Cast
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeHero() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        item {
-            Column(modifier = Modifier.padding(top = 18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.splash_tagline), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        item {
-            ConnectionCard(
-                connection = state.connection,
-                onScan = onScanDevices,
-                onDisconnect = viewModel::disconnect,
-                onReconnect = onScanDevices
-            )
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    FeatureActionCard(stringResource(R.string.screen_mirroring), stringResource(R.string.screen_mirroring_subtitle), Icons.Outlined.ScreenShare, onMirror, Modifier.weight(1f))
-                    FeatureActionCard(stringResource(R.string.cast_video), stringResource(R.string.cast_video_subtitle), Icons.Outlined.VideoLibrary, onOpenLibrary, Modifier.weight(1f))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
+                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f)
+                        )
+                    )
+                )
+                .padding(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BrandMark(size = 72.dp)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(999.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_eyebrow),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    FeatureActionCard(stringResource(R.string.cast_photo), stringResource(R.string.cast_photo_subtitle), Icons.Outlined.Image, onOpenLibrary, Modifier.weight(1f))
-                    FeatureActionCard(stringResource(R.string.cast_music), stringResource(R.string.cast_music_subtitle), Icons.Outlined.MusicNote, onOpenLibrary, Modifier.weight(1f))
-                }
-                FeatureActionCard(stringResource(R.string.web_video_cast), stringResource(R.string.web_video_cast_subtitle), Icons.Outlined.Web, onOpenBrowser)
+                Text(
+                    text = stringResource(R.string.home_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.home_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
-        item { BannerAd(visible = state.showAds) }
-        item { SectionHeader(stringResource(R.string.recent_devices)) }
-        if (state.recentDevices.isEmpty()) {
-            item { EmptyPanel(stringResource(R.string.empty_recent_devices)) }
-        } else {
-            items(state.recentDevices, key = { it.id }) { device ->
-                DeviceRow(device.name, listOfNotNull(device.protocol, device.ipAddress).joinToString(" | "), onClick = onScanDevices)
-            }
-        }
-        item { SectionHeader(stringResource(R.string.recently_played)) }
-        if (state.recentHistory.isEmpty()) {
-            item { EmptyPanel(stringResource(R.string.empty_recent_media)) }
-        } else {
-            items(state.recentHistory, key = { it.id }) { item ->
-                DeviceRow(item.mediaTitle, listOfNotNull(item.mediaKind, item.deviceName, item.status).joinToString(" | "), onClick = onOpenLibrary)
-            }
-        }
-        item {
-            StatusCard(
-                title = stringResource(R.string.connection_help),
-                body = stringResource(R.string.device_troubleshooting),
-                icon = Icons.Outlined.Cast
-            )
-        }
+    }
+}
+
+@Composable
+private fun HomeMetricStrip() {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        MetricPill(
+            title = stringResource(R.string.protocols_title),
+            value = stringResource(R.string.protocols_value),
+            icon = Icons.Outlined.Cast,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f)
+        )
+        MetricPill(
+            title = stringResource(R.string.privacy_title),
+            value = stringResource(R.string.privacy_value),
+            icon = Icons.Outlined.Web,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.weight(1f)
+        )
+        MetricPill(
+            title = stringResource(R.string.quality_title),
+            value = stringResource(R.string.quality_value),
+            icon = Icons.Outlined.VideoLibrary,
+            color = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.weight(1f)
+        )
     }
 }

@@ -2,6 +2,15 @@
     <string name="app_name">TVCast</string>
     <string name="admob_app_id_test">ca-app-pub-3940256099942544~3347511713</string>
     <string name="splash_tagline">Screen Mirroring &amp; TV Cast</string>
+    <string name="home_eyebrow">Ready to cast</string>
+    <string name="home_title">Your media, bigger.</string>
+    <string name="home_subtitle">Find compatible TVs, play local media, and catch direct web videos from one polished control center.</string>
+    <string name="protocols_title">Real protocols</string>
+    <string name="protocols_value">DLNA / UPnP</string>
+    <string name="privacy_title">Private browsing</string>
+    <string name="privacy_value">Local history</string>
+    <string name="quality_title">Smart playback</string>
+    <string name="quality_value">Media3</string>
     <string name="home">Home</string>
     <string name="browser">Browser</string>
     <string name="library">Library</string>
@@ -35,6 +44,7 @@
     <string name="onboarding_web_body">The browser detects direct, non-DRM media URLs that pages legitimately expose.</string>
     <string name="onboarding_secure_title">Connect securely to compatible devices</string>
     <string name="onboarding_secure_body">Use DLNA and Android-supported routing controls. Availability depends on your phone, TV, and network.</string>
+    <string name="onboarding_permission_note">Permissions are requested only when a feature needs them.</string>
     <string name="nearby_devices">Nearby devices</string>
     <string name="scanning_devices">Scanning your local network</string>
     <string name="demo_device_label">Demo only</string>
