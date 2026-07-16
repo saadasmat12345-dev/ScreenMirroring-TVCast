@@ -1,0 +1,9 @@
+<resources>
+    <color name="brand_blue">#0B4D91</color>
+    <color name="brand_blue_dark">#082E5D</color>
+    <color name="brand_blue_light">#E7F0FA</color>
+    <color name="brand_teal">#0B7A75</color>
+    <color name="brand_orange">#F59E0B</color>
+    <color name="surface_light">#FBFCFF</color>
+    <color name="surface_dark">#0D1117</color>
+</resources>

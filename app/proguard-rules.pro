@@ -1,0 +1,8 @@
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.android.billingclient.** { *; }
+-keep class androidx.media3.** { *; }
+-keep class dagger.hilt.** { *; }
+-keep class * extends androidx.room.RoomDatabase
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
